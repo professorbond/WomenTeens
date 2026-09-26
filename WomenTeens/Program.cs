@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
+using System.Text.Json;
 using WomenTeens.Data;
+using WomenTeens.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +21,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── OpenAPI (встроенный в .NET 10) ───────────────────────────────────────────
+// ── JSON — camelCase для всех ответов ────────────────────────────────────────
+builder.Services.ConfigureHttpJsonOptions(opts =>
+{
+    opts.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
+
+// ── OpenAPI (встроенный в .NET 10) + Scalar UI ───────────────────────────────
 builder.Services.AddOpenApi();
 
 // ── HTTP-клиент (для WeatherService и GeminiService) ─────────────────────────
@@ -35,9 +44,27 @@ using (var scope = app.Services.CreateScope())
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 app.UseCors();
-app.MapOpenApi();
 
-// ── Health-check endpoint ────────────────────────────────────────────────────
-app.MapGet("/", () => Results.Ok(new { status = "PeakGuard API is running 🏔️" }));
+// ── Scalar API Docs — только в Development (аналог Swagger) ─────────────────
+// Открывается по адресу: http://localhost:5000/scalar/v1
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title       = "PeakGuard API 🏔️";
+        options.Theme       = ScalarTheme.DeepSpace;
+        options.DefaultHttpClient = new(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    });
+}
+
+// ── Health-check ─────────────────────────────────────────────────────────────
+app.MapGet("/", () => Results.Ok(new { status = "PeakGuard API is running 🏔️" }))
+   .WithTags("Health");
+
+// ── API Эндпоинты ────────────────────────────────────────────────────────────
+app.MapTripEndpoints();
+app.MapAuditEndpoints();
+app.MapMonitorEndpoints();
 
 app.Run();
