@@ -3,6 +3,7 @@ using Scalar.AspNetCore;
 using System.Text.Json;
 using WomenTeens.Data;
 using WomenTeens.Endpoints;
+using WomenTeens.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,10 @@ builder.Services.AddOpenApi();
 
 // ── HTTP-клиент (для WeatherService и GeminiService) ─────────────────────────
 builder.Services.AddHttpClient();
+
+// ── Сервисы аудита ───────────────────────────────────────────────────────────
+builder.Services.AddScoped<WeatherService>();
+builder.Services.AddScoped<GeminiService>();
 
 var app = builder.Build();
 

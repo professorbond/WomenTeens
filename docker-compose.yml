@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════════
+#  PeakGuard — Docker Compose
+#  Запуск: docker compose up --build
+#  Остановка: docker compose down
+#  С очисткой БД: docker compose down -v
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: peakguard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d peakguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── ASP.NET Core API (.NET 10) ─────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      # Переопределяем connection string — хост = имя сервиса 'db'
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=peakguard;Username=postgres;Password=postgres"
+      GeminiApiKey: "${GEMINI_API_KEY:-}"
+      ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── React Frontend (Vite + nginx) ──────────────────────────────
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

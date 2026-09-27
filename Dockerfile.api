@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════════════════════
+#  PeakGuard API — .NET 10 multi-stage Dockerfile
+# ═══════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Build ────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Копируем csproj отдельно для кеширования restore
+COPY WomenTeens/WomenTeens.csproj WomenTeens/
+RUN dotnet restore WomenTeens/WomenTeens.csproj
+
+# Копируем весь исходный код
+COPY WomenTeens/ WomenTeens/
+WORKDIR /src/WomenTeens
+RUN dotnet publish -c Release -o /app/publish --no-restore
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+# ASP.NET Core слушает на порту 8080 по умолчанию в контейнере
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Development
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "WomenTeens.dll"]
