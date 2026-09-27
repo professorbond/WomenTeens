@@ -364,3 +364,8 @@ FodyWeavers.xsd
 
 # ASP.NET Core — секреты приложения (connection strings, API keys)
 **/appsettings.json
+
+# Environment variables
+.env
+.env.*
+!.env.production
